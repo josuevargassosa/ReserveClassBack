@@ -5,8 +5,11 @@ import { MonitorService } from "./monitor.service";
 import { Laboratorio } from "./entities/laboratorio.entity";
 import { Reserva } from "./entities/reserva.entity";
 import { Usuario } from "./entities/usuario.entity";
+import { Asignatura } from "./entities/signatura.entity";
 @Module({
-  imports: [TypeOrmModule.forFeature([Laboratorio, Reserva, Usuario])],
+  imports: [
+    TypeOrmModule.forFeature([Laboratorio, Reserva, Usuario, Asignatura]),
+  ],
   controllers: [MonitorController],
   providers: [MonitorService],
 })

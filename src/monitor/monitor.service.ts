@@ -9,6 +9,7 @@ import { Laboratorio } from "./entities/laboratorio.entity";
 import { Reserva } from "./entities/reserva.entity";
 import { Usuario } from "./entities/usuario.entity";
 import { CrearReservaDto } from "./dto/reservas.dto";
+import { Asignatura } from "./entities/signatura.entity";
 
 @Injectable()
 export class MonitorService {
@@ -17,12 +18,27 @@ export class MonitorService {
     private readonly labRepo: Repository<Laboratorio>,
     @InjectRepository(Reserva)
     private readonly reservaRepo: Repository<Reserva>,
-    @InjectRepository(Usuario) private readonly usuarioRepo: Repository<Usuario>
+    @InjectRepository(Asignatura)
+    private readonly asigRepo: Repository<Asignatura>,
+    @InjectRepository(Usuario)
+    private readonly usuarioRepo: Repository<Usuario>
   ) {}
 
   async getLabs() {
-    return this.labRepo.find({ order: { nombre: "ASC" } });
+    const rows = await this.labRepo.find();
+    return rows.map((r) => ({
+      ...r,
+    }));
   }
+
+  async getAsignaturas() {
+    // get all asignaturas
+    const rows = await this.asigRepo.find();
+    return rows.map((r) => ({
+      ...r,
+    }));
+  }
+
   async getReservas() {
     const reservas = await this.reservaRepo.find({
       order: { fecha: "ASC", horaInicio: "ASC" },
@@ -33,6 +49,7 @@ export class MonitorService {
       finISO: `${r.fecha}T${r.horaFin}`,
     }));
   }
+
   async loginByEmail(email: string) {
     const user = await this.usuarioRepo.findOne({ where: { email } });
     if (!user) throw new NotFoundException("Usuario no encontrado");

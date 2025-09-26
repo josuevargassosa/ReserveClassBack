@@ -37,7 +37,15 @@ export class MonitorController {
   @ApiOkResponse({ description: "Listado de laboratorios" })
   async getLabs() {
     const data = await this.monitor.getLabs();
+    console.log(data);
     return ApiResponseDto.ok("Listado de laboratorios", data);
+  }
+
+  @Get("asignaturas")
+  @ApiOkResponse({ description: "Listado de Asignaturas" })
+  async getAsignaturas() {
+    const data = await this.monitor.getAsignaturas();
+    return ApiResponseDto.ok("Listado de Asignaturas", data);
   }
 
   @Get("reservas")
