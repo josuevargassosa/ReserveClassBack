@@ -6,9 +6,16 @@ import { Laboratorio } from "./entities/laboratorio.entity";
 import { Reserva } from "./entities/reserva.entity";
 import { Usuario } from "./entities/usuario.entity";
 import { Asignatura } from "./entities/signatura.entity";
+import { Carrera } from "./entities/carrera.entity";
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Laboratorio, Reserva, Usuario, Asignatura]),
+    TypeOrmModule.forFeature([
+      Laboratorio,
+      Reserva,
+      Usuario,
+      Asignatura,
+      Carrera,
+    ]),
   ],
   controllers: [MonitorController],
   providers: [MonitorService],

@@ -10,6 +10,7 @@ import { Reserva } from "./entities/reserva.entity";
 import { Usuario } from "./entities/usuario.entity";
 import { CrearReservaDto } from "./dto/reservas.dto";
 import { Asignatura } from "./entities/signatura.entity";
+import { Carrera } from "./entities/carrera.entity";
 
 @Injectable()
 export class MonitorService {
@@ -21,7 +22,9 @@ export class MonitorService {
     @InjectRepository(Asignatura)
     private readonly asigRepo: Repository<Asignatura>,
     @InjectRepository(Usuario)
-    private readonly usuarioRepo: Repository<Usuario>
+    private readonly usuarioRepo: Repository<Usuario>,
+    @InjectRepository(Carrera)
+    private readonly carreraRepo: Repository<Carrera>
   ) {}
 
   async getLabs() {
@@ -29,6 +32,10 @@ export class MonitorService {
     return rows.map((r) => ({
       ...r,
     }));
+  }
+
+  async getCarreras() {
+    return this.carreraRepo.find({ order: { nombre: "ASC" } });
   }
 
   async getAsignaturas() {
@@ -39,11 +46,42 @@ export class MonitorService {
     }));
   }
 
+  // async getReservas() {
+  //   const reservas = await this.reservaRepo.find({
+  //     order: { fecha: "ASC", horaInicio: "ASC" },
+  //   });
+  //   return reservas.map((r) => ({
+  //     ...r,
+  //     inicioISO: `${r.fecha}T${r.horaInicio}`,
+  //     finISO: `${r.fecha}T${r.horaFin}`,
+  //   }));
+  // }
+
   async getReservas() {
-    const reservas = await this.reservaRepo.find({
-      order: { fecha: "ASC", horaInicio: "ASC" },
-    });
-    return reservas.map((r) => ({
+    const rows = await this.reservaRepo
+      .createQueryBuilder("r")
+      .leftJoin("laboratorio", "l", "l.LaboratorioID = r.laboratorioId")
+      .leftJoin("usuario", "u", "u.UsuarioID = r.usuarioId")
+      .leftJoin("asignatura", "a", "a.AsignaturaID = r.asignaturaId")
+      .select([
+        "r.id        AS id",
+        "r.fecha     AS fecha",
+        "r.horaInicio AS horaInicio",
+        "r.horaFin    AS horaFin",
+        "r.estado     AS estado",
+        "r.laboratorioId AS laboratorioId",
+        "r.usuarioId     AS usuarioId",
+        "r.asignaturaId  AS asignaturaId",
+      ])
+      .addSelect("l.Nombre", "laboratorioNombre")
+      .addSelect("u.Nombre", "usuarioNombre")
+      .addSelect("a.Nombre", "asignaturaNombre")
+      .addSelect(`DATE_FORMAT(r.fecha, '%Y/%m/%d')`, "fechaDisplay")
+      .orderBy("r.fecha", "ASC")
+      .addOrderBy("r.horaInicio", "ASC")
+      .getRawMany();
+
+    return rows.map((r: any) => ({
       ...r,
       inicioISO: `${r.fecha}T${r.horaInicio}`,
       finISO: `${r.fecha}T${r.horaFin}`,
@@ -88,20 +126,19 @@ export class MonitorService {
     const r = await this.reservaRepo.findOne({ where: { id } });
     if (!r) throw new NotFoundException("Reserva no encontrada");
 
-    // buscamos solape con aprobadas del mismo laboratorio y misma fecha
-    const conflict = await this.reservaRepo.findOne({
-      where: {
-        laboratorioId: r.laboratorioId,
-        fecha: r.fecha,
-        estado: "Aprobada" as any,
-        // intersección de [inicio, fin)
-        horaInicio: Raw(() => "? < HoraFin", [r.horaInicio]),
-        horaFin: Raw(() => "HoraInicio < ?", [r.horaFin]),
-      },
-    });
+    const conflict = await this.reservaRepo
+      .createQueryBuilder("res")
+      .where("res.laboratorioId = :lab", { lab: r.laboratorioId })
+      .andWhere("res.fecha = :fecha", { fecha: r.fecha })
+      .andWhere("res.estado = :estado", { estado: "Aprobada" })
+      // solape: nuevoInicio < existenteFin  AND  existenteInicio < nuevoFin
+      .andWhere(":nuevoInicio < res.horaFin", { nuevoInicio: r.horaInicio })
+      .andWhere("res.horaInicio < :nuevoFin", { nuevoFin: r.horaFin })
+      .getOne();
 
-    if (conflict)
+    if (conflict) {
       throw new BadRequestException(`Solapa con reserva #${conflict.id}`);
+    }
 
     await this.reservaRepo.update(id, { estado: "Aprobada" as any });
     return { id, estado: "Aprobada" };
@@ -111,8 +148,7 @@ export class MonitorService {
     const r = await this.reservaRepo.findOne({ where: { id } });
     if (!r) throw new NotFoundException("Reserva no encontrada");
     await this.reservaRepo.update(id, {
-      estado:
-        "Rechazada" as any /* puedes guardar motivo si lo tienes en tabla */,
+      estado: "Rechazada" as any,
     });
     return { id, estado: "Rechazada", motivo: motivo ?? null };
   }

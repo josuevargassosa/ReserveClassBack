@@ -62,10 +62,23 @@ export class MonitorController {
     return this.monitor.crearReserva(dto);
   }
 
+  @Get("carreras")
+  @ApiOkResponse({ description: "Listado de carreras" })
+  async getCarreras() {
+    const data = await this.monitor.getCarreras();
+    return ApiResponseDto.ok("Listado de carreras", data);
+  }
+
   @Patch("reservas/:id/aprobar")
   @ApiOperation({ summary: "Aprobar reserva (stub)" })
   aprobar(@Param("id") id: string) {
     return this.monitor.aprobarReserva(+id);
+  }
+
+  @Patch("reservas/:id/rechazar")
+  @ApiOperation({ summary: "Rechazar reserva (stub)" })
+  rechazar(@Param("id") id: string) {
+    return this.monitor.rechazarReserva(+id);
   }
 
   // @Post("registros-uso/start")
